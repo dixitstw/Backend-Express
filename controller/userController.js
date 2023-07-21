@@ -3,7 +3,8 @@ const sendEmail = require("../utils/setEmail");
 const Token = require("../model/TokenModel");
 const crypto = require("crypto");
 const jwt = require('jsonwebtoken')
-const {expressjwt} = require('express-jwt')
+const {expressjwt} = require('express-jwt');
+const { updateProduct } = require("./productController");
 //register
 exports.register = async (req, res) => {
   //destructuring to get info from user
@@ -40,7 +41,8 @@ exports.register = async (req, res) => {
   }
 
   // send email verification
-  const url = `http://localhost:5000/user/verification/${token.token}`;
+ // const url = `http://localhost:5000/user/verification/${token.token}`;
+ const url = `${process.env.FRONTEND_URL}/verification/${token.token}`
 
   sendEmail({
     from: "noreply@something.com",
@@ -104,7 +106,8 @@ exports.resendVerification = async(req, res) =>{
         return res.status(400).json({error: "Failed to generate token."})
     }
     //send email
-    const url = `http://localhost:5000/user/verification/${token.token}`
+    //const url = `http://localhost:5000/user/verification/${token.token}`
+    const url = `${process.env.FRONTEND_URL}/verification/${token.token}`
 
     sendEmail({
         from: "noreply@something.com",
@@ -176,7 +179,9 @@ exports.forgetPassword = async(req, res) => {
     res.status(400).json({error: "Something went wrong."})
   }
   // send token in email
-  const url = `http://localhost:5000/user/resetpassword/${token.token}`
+  //const url = `http://localhost:5000/user/resetpassword/${token.token}`
+  const url = `${process.env.FRONTEND_URL}/resetpassword/${token.token}`;
+
   sendEmail({
     from: "noreply@something.com",
     to: user.email,
@@ -224,11 +229,30 @@ exports.authorize = expressjwt({
 })
 
 //to get all users
-exports.getAllUsers = async(req, res) => {
-  let users = await User.find()
+exports.getUserList = async(req, res) => {
+  let users = await User.find().select(['-hashed_password', '-salt'])
   if(!users) {
       return res.status(400).json({error: "Something went wrong."})
   }
   res.send(users)
 }
 
+//to make admin
+exports.toggleRole = async(req, res) => {
+  let user = await User.findById(req.params.id)
+  if(!user) {
+    return res.status(400).json({error: "User not found"})
+  }
+  if(user.role===0) {
+    user.role = 1
+  }
+  else {
+    user.role = 0
+  }
+  user= await user.save()
+  if(!user){
+    return res.status(400).json({error: "Something went wrong"})
+  }
+    res.send({message: "User role updated."})
+  
+}
